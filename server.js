@@ -4,9 +4,22 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// IMPORTANT: allow proxy (Replit runs behind one)
+app.set("trust proxy", 1);
+
+// Health check route (REQUIRED for Replit Deployments)
+app.get("/", (req, res) => {
+  res.status(200).send("Blackjack server is running");
+});
 
 app.use(express.static("public"));
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  }
+});
 
 let players = {};
 
@@ -56,8 +69,19 @@ io.on("connection", (socket) => {
     if (!p) return;
 
     let change = 0;
-    if (result === "win") { change = p.bet; p.money += p.bet; p.total += p.bet; }
-    if (result === "lose") { change = -p.bet; p.money -= p.bet; p.total -= p.bet; }
+
+    if (result === "win") {
+      change = p.bet;
+      p.money += p.bet;
+      p.total += p.bet;
+    }
+
+    if (result === "lose") {
+      change = -p.bet;
+      p.money -= p.bet;
+      p.total -= p.bet;
+    }
+
     // push = no change
     p.bet = 0;
 
@@ -65,12 +89,20 @@ io.on("connection", (socket) => {
     io.emit("update", players);
   });
 
-  // Player disconnects
   socket.on("disconnect", () => {
     delete players[socket.id];
     io.emit("update", players);
   });
 });
 
+// IMPORTANT: Must use process.env.PORT
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// IMPORTANT: Must bind to 0.0.0.0
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Optional: Catch crashes so deployment doesn't silently fail
+process.on("uncaughtException", console.error);
+process.on("unhandledRejection", console.error);
