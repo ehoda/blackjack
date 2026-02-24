@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Aminoglu Blackjack</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: linear-gradient(135deg, #1f1c2c, #928dab); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+    .stat-card { border-radius: 15px; padding: 20px; margin: 10px; text-align:center; color:white; font-weight:bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3);}
+    .stat-money { background: #28a745; }
+    .stat-bet { background: #ffc107; color:black; }
+    .stat-loan { background: #17a2b8; }
+    .stat-total { background: #6f42c1; }
+    #stats { display:flex; flex-wrap:wrap; justify-content:center; margin-bottom:20px; }
+    #gameBox { max-width:500px; margin:auto; }
+    h2 { display:flex; justify-content:center; align-items:center; gap:15px; font-weight:bold; font-size:2.2em; }
+  </style>
+</head>
+<body>
+
+<div class="container pt-3">
+  <h2 class="text-center mb-4">🎴 Aminoglu Blackjack 🂡</h2>
+
+  <div id="joinBox">
+    <input id="name" class="form-control mb-2" placeholder="Your name">
+    <button class="btn btn-success w-100" onclick="join()">Join</button>
+  </div>
+
+  <div id="gameBox" style="display:none;">
+    <div id="stats">
+      <div class="stat-card stat-money" id="moneyCard">💰 Money: 0</div>
+      <div class="stat-card stat-bet" id="betCard">🎲 Bet: 0</div>
+      <div class="stat-card stat-loan" id="loanCard">💳 Loan: 0</div>
+      <div class="stat-card stat-total" id="totalCard">🏆 Total Won/Lost: 0</div>
+    </div>
+
+    <input id="betAmount" type="number" class="form-control mb-2" placeholder="Bet amount or loan payment">
+    <button class="btn btn-warning w-100 mb-2" onclick="bet()">Place Bet</button>
+
+    <div class="d-grid gap-2 mb-3">
+      <button class="btn btn-info" onclick="takeLoan()">Take Loan</button>
+      <button class="btn btn-light" onclick="payLoan()">Pay Loan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+let myId = null;
+
+function join() {
+  const name = document.getElementById("name").value;
+  socket.emit("join", name);
+  document.getElementById("joinBox").style.display = "none";
+  document.getElementById("gameBox").style.display = "block";
+}
+
+function bet() {
+  const amount = parseInt(document.getElementById("betAmount").value);
+  if(amount>0) socket.emit("bet", amount);
+}
+
+function takeLoan() {
+  const amount = parseInt(document.getElementById("betAmount").value);
+  if(amount>0) socket.emit("takeLoanCustom", amount);
+}
+
+function payLoan() {
+  const amount = parseInt(document.getElementById("betAmount").value);
+  if(amount>0) socket.emit("payLoanPartial", amount);
+}
+
+socket.on("connect",()=>{ myId=socket.id; });
+
+socket.on("update",(players)=>{
+  const p=players[myId];
+  if(p){
+    document.getElementById("moneyCard").textContent=`💰 Money: ${p.money}`;
+    document.getElementById("betCard").textContent=`🎲 Bet: ${p.bet}`;
+    document.getElementById("loanCard").textContent=`💳 Loan: ${p.loan}`;
+    document.getElementById("totalCard").textContent=`🏆 Total Won/Lost: ${p.total}`;
+  }
+});
+
+socket.on("resultPopup",({result,change})=>{
+  const overlay=document.createElement("div");
+  overlay.style.position="fixed";
+  overlay.style.top=0; overlay.style.left=0;
+  overlay.style.width="100%"; overlay.style.height="100%";
+  overlay.style.background="rgba(0,0,0,0.85)";
+  overlay.style.color="white";
+  overlay.style.display="flex";
+  overlay.style.flexDirection="column";
+  overlay.style.justifyContent="center";
+  overlay.style.alignItems="center";
+  overlay.style.fontSize="3em";
+  overlay.style.zIndex=9999;
+  overlay.style.textAlign="center";
+  overlay.style.transition="opacity 0.5s";
+
+  if(result==="win"){ overlay.textContent=`🎉 YOU WON ${change}$! 🎉`; confetti({ particleCount:200, spread:100, origin:{y:0.6}});}
+  else if(result==="lose"){ overlay.textContent=`😢 YOU LOST ${-change}$ 😢`;}
+  else if(result==="push"){ overlay.textContent=`😐 YOU PUSHED 😐`;}
+
+  document.body.appendChild(overlay);
+  setTimeout(()=>{ overlay.style.opacity=0; setTimeout(()=>overlay.remove(),500); },3000);
+});
+</script>
+
+</body>
+</html>

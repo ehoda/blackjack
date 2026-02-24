@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Aminoglu Blackjack Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/socket.io/socket.io.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body{background:#1f1c2c;color:white;font-family:'Segoe UI',sans-serif;}
+    table{width:100%; margin-top:20px;}
+    th,td{text-align:center; padding:10px;}
+    th{background:#333;}
+    td{background:#222;}
+    button{margin:2px;}
+    #loginBox{max-width:300px;margin:auto;margin-top:100px;}
+  </style>
+</head>
+<body>
+
+<div id="loginBox">
+  <input id="adminPass" class="form-control mb-2" type="password" placeholder="Enter admin password">
+  <button class="btn btn-danger w-100" onclick="login()">Login as Admin</button>
+</div>
+
+<div id="adminBox" style="display:none;">
+  <h2 class="text-center mt-3">Admin Dashboard</h2>
+  <table class="table table-dark" id="playersTable">
+    <thead>
+      <tr><th>Name</th><th>Money</th><th>Loan</th><th>Bet</th><th>Total</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+const socket=io();
+const ADMIN_PASSWORD="1234"; // same as server.js
+
+function login(){
+  const pass=document.getElementById("adminPass").value;
+  if(pass===ADMIN_PASSWORD){
+    document.getElementById("loginBox").style.display="none";
+    document.getElementById("adminBox").style.display="block";
+  }else alert("Wrong password!");
+}
+
+function adminResult(id,result){ socket.emit("adminResult",{id,result}); }
+
+socket.on("update",(players)=>{
+  const tbody=document.querySelector("#playersTable tbody");
+  tbody.innerHTML="";
+  for(const id in players){
+    const p=players[id];
+    const row=document.createElement("tr");
+    row.innerHTML=`
+      <td>${p.name}</td>
+      <td>${p.money}</td>
+      <td>${p.loan}</td>
+      <td>${p.bet}</td>
+      <td>${p.total}</td>
+      <td>
+        <button class="btn btn-success btn-sm" onclick="adminResult('${id}','win')">Win</button>
+        <button class="btn btn-danger btn-sm" onclick="adminResult('${id}','lose')">Lose</button>
+        <button class="btn btn-secondary btn-sm" onclick="adminResult('${id}','push')">Push</button>
+      </td>`;
+    tbody.appendChild(row);
+  }
+});
+</script>
+
+</body>
+</html>
